@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="免费在线小游戏乐园 - 恐龙闯关、数学冒险、气球射击，适合小朋友和全家娱乐！">
+<title>🎮 小游戏乐园 - 免费在线小游戏</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+    min-height: 100vh;
+    color: #fff;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ── 头部 ── */
+  .header {
+    text-align: center;
+    padding: 40px 20px 20px;
+  }
+  .header h1 {
+    font-size: 48px;
+    background: linear-gradient(135deg, #FFD700, #FF6B6B, #4D96FF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 10px;
+  }
+  .header p {
+    color: rgba(255,255,255,0.7);
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+
+  /* ── 游戏卡片网格 ── */
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 28px;
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 24px;
+  }
+
+  .game-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 24px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    backdrop-filter: blur(10px);
+  }
+  .game-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+
+  .card-preview {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-preview.card1 { background: linear-gradient(135deg, #87CEEB, #5D8C3E); }
+  .card-preview.card2 { background: linear-gradient(135deg, #FF9A9E, #FF6B6B); }
+  .card-preview.card3 { background: linear-gradient(135deg, #1a1a2e, #0f3460); }
+  .card-preview.card4 { background: linear-gradient(135deg, #87CEEB, #98FB98); }
+
+  .card-info {
+    padding: 24px;
+  }
+  .card-info h3 {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  .card-info .desc {
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .card-info .tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    background: rgba(255,255,255,0.12);
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+  }
+  .tag.hot {
+    background: rgba(255,107,107,0.3);
+    color: #FF6B6B;
+  }
+
+  /* ── 广告位 ── */
+  .ad-section {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 24px;
+  }
+  .ad-banner {
+    background: rgba(255,255,255,0.04);
+    border: 1px dashed rgba(255,255,255,0.2);
+    border-radius: 16px;
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.3);
+    font-size: 14px;
+    letter-spacing: 3px;
+    transition: border-color 0.3s;
+  }
+  .ad-banner:hover {
+    border-color: rgba(255,255,255,0.5);
+  }
+
+  /* ── 底部 ── */
+  .footer {
+    text-align: center;
+    padding: 30px 20px 40px;
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+  .footer a {
+    color: rgba(255,255,255,0.5);
+    text-decoration: none;
+  }
+
+  /* ── 移动端 ── */
+  @media (max-width: 768px) {
+    .header h1 { font-size: 32px; }
+    .games-grid {
+      grid-template-columns: 1fr;
+      gap: 16px;
+      padding: 0 12px;
+    }
+    .card-preview { height: 150px; font-size: 60px; }
+    .header { padding: 24px 16px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── 头部 ── -->
+<div class="header">
+  <h1>🎮 小游戏乐园</h1>
+  <p>无需下载 · 点开即玩 · 全家欢乐</p>
+</div>
+
+<!-- ── 游戏列表 ── -->
+<div class="games-grid">
+
+  <!-- 游戏1: 小勇士大冒险 -->
+  <div class="game-card" onclick="openGame('games/小勇士大冒险.html')">
+    <div class="card-preview card1">🦕</div>
+    <div class="card-info">
+      <h3>🦕 小勇士大冒险</h3>
+      <p class="desc">5关闯关游戏！收集星星、躲避障碍，挑战不同主题世界。适合6岁以上小朋友。</p>
+      <div class="tags">
+        <span class="tag hot">🔥 热门</span>
+        <span class="tag">闯关</span>
+        <span class="tag">冒险</span>
+        <span class="tag">5个关卡</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏2: 小恐龙闯关 -->
+  <div class="game-card" onclick="openGame('games/小恐龙闯关.html')">
+    <div class="card-preview card2">🐱</div>
+    <div class="card-info">
+      <h3>🐱 小恐龙闯关大冒险</h3>
+      <p class="desc">无限跑酷！双段跳跃、收集星星、挑战最高分。可爱画风，小朋友最爱！</p>
+      <div class="tags">
+        <span class="tag hot">🔥 热门</span>
+        <span class="tag">跑酷</span>
+        <span class="tag">无限挑战</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏3: 数学大冒险 -->
+  <div class="game-card" onclick="openGame('games/数学大冒险.html')">
+    <div class="card-preview card3">🧮</div>
+    <div class="card-info">
+      <h3>🧮 数学大冒险</h3>
+      <p class="desc">50以内加减法闯关！10关挑战，每关5道题。学习+娱乐两不误，家长放心！</p>
+      <div class="tags">
+        <span class="tag">教育</span>
+        <span class="tag">数学</span>
+        <span class="tag">10关</span>
+        <span class="tag">亲子</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏4: 气球射击 -->
+  <div class="game-card" onclick="openGame('games/气球射击乐园.html')">
+    <div class="card-preview card4">🎈</div>
+    <div class="card-info">
+      <h3>🎈 气球射击乐园</h3>
+      <p class="desc">点击气球！连击加分、特殊星星气球、炫酷粒子效果。解压休闲小游戏。</p>
+      <div class="tags">
+        <span class="tag">射击</span>
+        <span class="tag">休闲</span>
+        <span class="tag">解压</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── 广告位（预留） ── -->
+<div class="ad-section">
+  <div class="ad-banner" id="adBanner">
+    📢 广告位招租 · 联系微信：待填写
+  </div>
+</div>
+
+<!-- ── 底部 ── -->
+<div class="footer">
+  <p>© 2024 小游戏乐园 | 免费在线小游戏 | 支持手机和电脑</p>
+  <p style="margin-top:6px;">
+    <a href="#">关于我们</a> ·
+    <a href="#">合作联系</a> ·
+    <a href="#">隐私政策</a>
+  </p>
+</div>
+
+<script>
+// 点击卡片在新窗口打开游戏
+function openGame(url) {
+  window.open(url, '_blank');
+}
+
+// 统计哪个游戏最受欢迎（用于后续优化）
+document.querySelectorAll('.game-card').forEach((card, i) => {
+  card.addEventListener('click', function() {
+    // 后续可接入统计系统（百度统计/Google Analytics）
+    console.log('🎮 游戏' + (i+1) + ' 被打开');
+  });
+});
+
+// 响应式适配
+console.log('🎮 小游戏乐园已就绪！');
+console.log('📱 支持手机和电脑访问');
+console.log('🕹️  共4款游戏等待玩家挑战');
+</script>
+
+</body>
+</html>
