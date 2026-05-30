@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎈 气球射击乐园 - 小朋友来玩吧！</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: linear-gradient(180deg, #87CEEB 0%, #98FB98 40%, #90EE90 100%);
+    overflow: hidden;
+    font-family: 'Comic Sans MS', 'KaiTi', cursive, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: crosshair;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  canvas {
+    display: block;
+    position: absolute;
+    top: 0; left: 0;
+  }
+
+  #ui {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 15px 25px;
+    pointer-events: none;
+  }
+
+  .ui-box {
+    background: rgba(255,255,255,0.85);
+    border-radius: 25px;
+    padding: 10px 22px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    text-align: center;
+    min-width: 100px;
+  }
+
+  .ui-label {
+    font-size: 16px;
+    color: #666;
+    font-weight: bold;
+  }
+
+  .ui-value {
+    font-size: 36px;
+    font-weight: bold;
+    color: #FF6B6B;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+  }
+
+  #combo-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0px;
+    font-weight: bold;
+    color: #FFD700;
+    text-shadow: 3px 3px 0 #FF6B6B, -1px -1px 0 #FF6B6B;
+    pointer-events: none;
+    transition: none;
+    z-index: 10;
+  }
+
+  #start-screen, #gameover-screen {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.3);
+    z-index: 20;
+  }
+
+  #gameover-screen { display: none; }
+
+  .big-title {
+    font-size: 60px;
+    color: #FF6B6B;
+    text-shadow: 4px 4px 0 #FFD700, -2px -2px 0 #FFD700;
+    margin-bottom: 10px;
+    animation: bounce 0.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-15px); }
+  }
+
+  .subtitle {
+    font-size: 24px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    margin-bottom: 30px;
+  }
+
+  .btn {
+    font-size: 32px;
+    padding: 15px 50px;
+    border-radius: 50px;
+    border: none;
+    background: linear-gradient(180deg, #FF6B6B, #ee5a5a);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 8px 0 #c0392b, 0 10px 25px rgba(0,0,0,0.3);
+    transition: all 0.1s;
+    font-family: inherit;
+    letter-spacing: 2px;
+  }
+
+  .btn:active {
+    transform: translateY(5px);
+    box-shadow: 0 3px 0 #c0392b, 0 5px 15px rgba(0,0,0,0.3);
+  }
+
+  .btn:hover {
+    background: linear-gradient(180deg, #FF8787, #FF6B6B);
+  }
+
+  #final-score {
+    font-size: 80px;
+    color: #FFD700;
+    text-shadow: 4px 4px 0 #FF6B6B;
+    margin: 10px 0;
+  }
+
+  .stars {
+    font-size: 50px;
+    margin: 10px 0;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="ui">
+  <div class="ui-box">
+    <div class="ui-label">⭐ 得分</div>
+    <div class="ui-value" id="score">0</div>
+  </div>
+  <div class="ui-box">
+    <div class="ui-label">🎯 连击</div>
+    <div class="ui-value" id="combo">0</div>
+  </div>
+  <div class="ui-box">
+    <div class="ui-label">❤️ 生命</div>
+    <div class="ui-value" id="lives">5</div>
+  </div>
+</div>
+
+<div id="combo-text"></div>
+
+<div id="start-screen">
+  <div class="big-title">🎈 气球射击乐园 🎈</div>
+  <div class="subtitle">点一点气球，把它碰爆吧！</div>
+  <button class="btn" id="start-btn" onclick="startGame()">🎮 开始玩！</button>
+</div>
+
+<div id="gameover-screen">
+  <div class="big-title">🌈 太棒了！</div>
+  <div class="stars" id="stars-display">⭐⭐⭐</div>
+  <div id="final-score">0</div>
+  <div class="subtitle" style="font-size:28px;">分</div>
+  <button class="btn" onclick="startGame()">🔄 再玩一次！</button>
+</div>
+
+<script>
+// ========== 音效系统 (Web Audio API) ==========
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+}
+
+function playPop(freq = 600) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, t);
+  osc.frequency.exponentialRampToValueAtTime(freq * 2, t + 0.05);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.5, t + 0.12);
+  gain.gain.setValueAtTime(0.15, t);
+  gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+  osc.start(t);
+  osc.stop(t + 0.15);
+}
+
+function playCombo(n) {
+  if (!audioCtx) return;
+  const baseFreq = 400 + n * 60;
+  const t = audioCtx.currentTime;
+  for (let i = 0; i < Math.min(n, 8); i++) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'triangle';
+    const freq = baseFreq + i * 80;
+    osc.frequency.setValueAtTime(freq, t + i * 0.04);
+    gain.gain.setValueAtTime(0.08, t + i * 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.04 + 0.1);
+    osc.start(t + i * 0.04);
+    osc.stop(t + i * 0.04 + 0.1);
+  }
+}
+
+function playMiss() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(200, t);
+  osc.frequency.exponentialRampToValueAtTime(100, t + 0.2);
+  gain.gain.setValueAtTime(0.08, t);
+  gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+  osc.start(t);
+  osc.stop(t + 0.2);
+}
+
+function playCheer() {
+  if (!audioCtx) return;
+  const notes = [523, 659, 784, 1047];
+  const t = audioCtx.currentTime;
+  notes.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, t + i * 0.12);
+    gain.gain.setValueAtTime(0.12, t + i * 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.12 + 0.2);
+    osc.start(t + i * 0.12);
+    osc.stop(t + i * 0.12 + 0.2);
+  });
+}
+
+// ========== 游戏状态 ==========
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const comboEl = document.getElementById('combo');
+const livesEl = document.getElementById('lives');
+const comboText = document.getElementById('combo-text');
+const startScreen = document.getElementById('start-screen');
+const gameoverScreen = document.getElementById('gameover-screen');
+const finalScoreEl = document.getElementById('final-score');
+const starsDisplay = document.getElementById('stars-display');
+
+let W, H;
+let balloons = [];
+let particles = [];
+let sparkles = [];
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
+let lives = 5;
+let gameRunning = false;
+let animId;
+let missedBalloons = 0;
+let frameCount = 0;
+let difficulty = 1;
+
+// 气球颜色
+const BALLOON_COLORS = [
+  '#FF6B6B', // 红
+  '#FF9F43', // 橙
+  '#FECA57', // 黄
+  '#54A0FF', // 蓝
+  '#5F27CD', // 紫
+  '#FF6FB7', // 粉
+  '#48DBFB', // 青
+  '#0ABDE3', // 天蓝
+  '#10AC84', // 绿
+  '#EE5A24', // 深橙
+];
+
+const BALLOON_EMOJIS = ['😊', '🌟', '🦋', '🌸', '🎀', '💎', '🍭', '🐱', '🐶', '🐰'];
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ========== 粒子系统 ==========
+class Particle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * 8;
+    this.vy = (Math.random() - 0.5) * 8 - 3;
+    this.life = 1;
+    this.decay = 0.015 + Math.random() * 0.035;
+    this.size = 3 + Math.random() * 8;
+    this.color = color;
+    this.shape = Math.random() < 0.3 ? 'star' : 'circle';
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += 0.12;
+    this.life -= this.decay;
+  }
+
+  draw(ctx) {
+    if (this.life <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = this.life;
+    ctx.fillStyle = this.color;
+    if (this.shape === 'star') {
+      drawStar(ctx, this.x, this.y, this.size);
+    } else {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  get alive() { return this.life > 0; }
+}
+
+class Sparkle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.vx = (Math.random() - 0.5) * 3;
+    this.vy = -2 - Math.random() * 4;
+    this.life = 1;
+    this.decay = 0.02 + Math.random() * 0.04;
+    this.size = 1 + Math.random() * 3;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.life -= this.decay;
+  }
+
+  draw(ctx) {
+    if (this.life <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = this.life;
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  get alive() { return this.life > 0; }
+}
+
+function drawStar(ctx, x, y, size) {
+  const spikes = 5;
+  const outerR = size;
+  const innerR = size * 0.4;
+  ctx.beginPath();
+  for (let i = 0; i < spikes * 2; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const angle = (i * Math.PI) / spikes - Math.PI / 2;
+    const sx = x + Math.cos(angle) * r;
+    const sy = y + Math.sin(angle) * r;
+    if (i === 0) ctx.moveTo(sx, sy);
+    else ctx.lineTo(sx, sy);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ========== 气球系统 ==========
+class Balloon {
+  constructor() {
+    this.reset();
+    // 初始位置随机分布
+    this.y = Math.random() * H * 0.8 + H * 0.1;
+  }
+
+  reset() {
+    this.x = 40 + Math.random() * (W - 80);
+    this.y = H + 40 + Math.random() * 100;
+    this.targetX = this.x;
+    this.color = BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)];
+    this.emoji = BALLOON_EMOJIS[Math.floor(Math.random() * BALLOON_EMOJIS.length)];
+    this.size = 35 + Math.random() * 25;
+    this.speed = 0.6 + Math.random() * 1.2 + difficulty * 0.1;
+    this.wobble = Math.random() * 0.03;
+    this.wobbleAmp = 20 + Math.random() * 40;
+    this.wobbleOffset = Math.random() * Math.PI * 2;
+    this.isSpecial = Math.random() < 0.12;
+    if (this.isSpecial) {
+      this.color = '#FFD700';
+      this.emoji = '⭐';
+      this.size += 15;
+      this.speed *= 1.3;
+    }
+    this.stringLen = 25 + this.size * 0.4;
+    this.popped = false;
+    this.frame = 0;
+  }
+
+  update() {
+    if (this.popped) return;
+    this.frame++;
+    this.y -= this.speed;
+    this.x += Math.sin(this.frame * this.wobble + this.wobbleOffset) * 0.5;
+    if (this.y < -80) {
+      this.reset();
+      return 'escaped';
+    }
+    return null;
+  }
+
+  draw(ctx) {
+    if (this.popped) return;
+
+    // 绳子
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y + this.size);
+    ctx.quadraticCurveTo(
+      this.x + Math.sin(this.frame * 0.05) * 5,
+      this.y + this.size + this.stringLen * 0.6,
+      this.x + Math.sin(this.frame * 0.05) * 8,
+      this.y + this.size + this.stringLen
+    );
+    ctx.stroke();
+
+    // 气球主体
+    const gradient = ctx.createRadialGradient(
+      this.x - this.size * 0.25, this.y - this.size * 0.2, this.size * 0.1,
+      this.x, this.y, this.size
+    );
+    gradient.addColorStop(0, 'rgba(255,255,255,0.7)');
+    gradient.addColorStop(1, this.color);
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y, this.size * 0.72, this.size * 0.85, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 气球高光
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(
+      this.x - this.size * 0.22,
+      this.y - this.size * 0.28,
+      this.size * 0.18,
+      this.size * 0.3,
+      -0.4,
+      0, Math.PI * 2
+    );
+    ctx.fill();
+
+    // 气球结
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.moveTo(this.x - 6, this.y + this.size * 0.7);
+    ctx.lineTo(this.x + 6, this.y + this.size * 0.7);
+    ctx.lineTo(this.x, this.y + this.size * 0.85);
+    ctx.closePath();
+    ctx.fill();
+
+    // Emoji 脸
+    ctx.font = `${this.size * 0.6}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(this.emoji, this.x, this.y + this.size * 0.02);
+
+    // 特殊气球的光环
+    if (this.isSpecial) {
+      ctx.strokeStyle = 'rgba(255,215,0,0.4)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size + 8, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 闪烁星星
+      const sparkleAngle = this.frame * 0.05;
+      for (let i = 0; i < 4; i++) {
+        const a = sparkleAngle + i * Math.PI * 0.5;
+        const sx = this.x + Math.cos(a) * (this.size + 14);
+        const sy = this.y + Math.sin(a) * (this.size + 14);
+        ctx.fillStyle = 'rgba(255,255,200,0.8)';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  contains(px, py) {
+    const dx = px - this.x;
+    const dy = py - this.y;
+    return (dx * dx) / (this.size * 0.72) ** 2 + (dy * dy) / (this.size * 0.85) ** 2 <= 1;
+  }
+}
+
+// ========== 十字准星 ==========
+let mouseX = -100, mouseY = -100;
+let cursorSize = 25;
+
+canvas.addEventListener('mousemove', (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  mouseX = e.touches[0].clientX;
+  mouseY = e.touches[0].clientY;
+}, { passive: false });
+
+// ========== 点击处理 ==========
+canvas.addEventListener('click', (e) => {
+  if (!gameRunning) return;
+  initAudio();
+  handleShot(e.clientX, e.clientY);
+});
+
+canvas.addEventListener('touchstart', (e) => {
+  if (!gameRunning) return;
+  e.preventDefault();
+  initAudio();
+  handleShot(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+function handleShot(px, py) {
+  let hit = false;
+  let specialHit = false;
+
+  for (const b of balloons) {
+    if (b.popped) continue;
+    if (b.contains(px, py)) {
+      b.popped = true;
+      hit = true;
+      if (b.isSpecial) specialHit = true;
+
+      // 粒子效果
+      const count = b.isSpecial ? 35 : 18;
+      for (let i = 0; i < count; i++) {
+        particles.push(new Particle(b.x, b.y, b.color));
+      }
+      // 金色闪光
+      for (let i = 0; i < 8; i++) {
+        sparkles.push(new Sparkle(b.x, b.y));
+      }
+
+      if (b.isSpecial) {
+        score += 5;
+        playPop(800);
+      } else {
+        score++;
+        playPop(400 + Math.random() * 300);
+      }
+
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+
+      // 连击奖励
+      if (combo >= 5 && combo % 5 === 0) {
+        score += combo;
+        showComboText(combo);
+        playCombo(Math.min(combo, 15));
+      }
+
+      updateUI();
+      break;
+    }
+  }
+
+  if (!hit) {
+    combo = 0;
+    lives--;
+    playMiss();
+    updateUI();
+    if (lives <= 0) {
+      endGame();
+    }
+  } else {
+    // 击中后的光标动画
+    cursorSize = 35;
+  }
+}
+
+function showComboText(n) {
+  comboText.textContent = n >= 20 ? `🔥 ${n}连击！太厉害了！` :
+                          n >= 10 ? `✨ ${n}连击！好棒！` :
+                          `👍 ${n}连击！`;
+  comboText.style.fontSize = '60px';
+  comboText.style.opacity = '1';
+  comboText.style.transform = 'translate(-50%, -50%) scale(1.3)';
+
+  requestAnimationFrame(() => {
+    comboText.style.transition = 'all 0.6s ease-out';
+    comboText.style.fontSize = '20px';
+    comboText.style.opacity = '0';
+    comboText.style.transform = 'translate(-50%, -50%) scale(0.5) translateY(-80px)';
+  });
+
+  setTimeout(() => {
+    comboText.style.transition = 'none';
+    comboText.style.fontSize = '0px';
+    comboText.style.opacity = '1';
+  }, 700);
+}
+
+// ========== 云朵背景 ==========
+const clouds = [];
+for (let i = 0; i < 8; i++) {
+  clouds.push({
+    x: Math.random() * 2000,
+    y: 30 + Math.random() * (typeof H !== 'undefined' ? H : 800) * 0.5,
+    w: 80 + Math.random() * 180,
+    speed: 0.2 + Math.random() * 0.5,
+  });
+}
+
+function drawClouds(ctx) {
+  clouds.forEach(c => {
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    const cx = c.x, cy = c.y, r = c.w * 0.3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.arc(cx - r * 0.8, cy + r * 0.2, r * 0.7, 0, Math.PI * 2);
+    ctx.arc(cx + r * 0.8, cy + r * 0.15, r * 0.75, 0, Math.PI * 2);
+    ctx.arc(cx - r * 0.4, cy - r * 0.5, r * 0.6, 0, Math.PI * 2);
+    ctx.arc(cx + r * 0.5, cy - r * 0.4, r * 0.65, 0, Math.PI * 2);
+    ctx.fill();
+    c.x += c.speed;
+    if (c.x > W + 200) c.x = -200;
+  });
+}
+
+// ========== 游戏循环 ==========
+function update() {
+  if (!gameRunning) return;
+
+  frameCount++;
+  difficulty = 1 + Math.floor(frameCount / 600); // 每10秒增加难度
+
+  // 确保气球数量
+  const targetCount = Math.min(8 + difficulty, 20);
+  while (balloons.length < targetCount) {
+    balloons.push(new Balloon());
+  }
+
+  // 更新气球
+  for (const b of balloons) {
+    const result = b.update();
+    if (result === 'escaped' && !b.isSpecial) {
+      combo = 0;
+      lives--;
+      updateUI();
+      if (lives <= 0) endGame();
+    }
+  }
+
+  // 更新粒子
+  particles.forEach(p => p.update());
+  particles = particles.filter(p => p.alive);
+
+  // 更新闪光
+  sparkles.forEach(s => s.update());
+  sparkles = sparkles.filter(s => s.alive);
+
+  // 光标动画
+  if (cursorSize > 25) cursorSize -= 0.5;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // 蓝天渐变
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#87CEEB');
+  skyGrad.addColorStop(0.5, '#B8E6FF');
+  skyGrad.addColorStop(1, '#90EE90');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 太阳
+  const sunX = W * 0.85, sunY = 80;
+  const sunGrad = ctx.createRadialGradient(sunX, sunY, 20, sunX, sunY, 100);
+  sunGrad.addColorStop(0, 'rgba(255,255,200,1)');
+  sunGrad.addColorStop(0.4, 'rgba(255,255,150,0.6)');
+  sunGrad.addColorStop(1, 'rgba(255,200,50,0)');
+  ctx.fillStyle = sunGrad;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 100, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 草地
+  ctx.fillStyle = '#7EC850';
+  ctx.beginPath();
+  ctx.rect(0, H - 60, W, 60);
+  ctx.fill();
+
+  // 草地纹理
+  ctx.fillStyle = '#6DB840';
+  for (let i = 0; i < W; i += 15) {
+    const h = 8 + Math.sin(i * 0.3) * 5;
+    ctx.fillRect(i, H - 60, 3, -h);
+  }
+
+  // 花朵
+  for (let i = 0; i < W; i += 80) {
+    const fx = i + Math.sin(i * 0.1) * 15;
+    const fy = H - 55;
+    ctx.fillStyle = ['#FF6B6B', '#FFD700', '#FF9F43', '#FF6FB7', '#ffffff'][Math.floor(i / 80) % 5];
+    for (let p = 0; p < 5; p++) {
+      const angle = (p / 5) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(fx + Math.cos(angle) * 5, fy + Math.sin(angle) * 5, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(fx, fy, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 云朵
+  drawClouds(ctx);
+
+  // 气球
+  balloons.forEach(b => b.draw(ctx));
+
+  // 粒子
+  particles.forEach(p => p.draw(ctx));
+  sparkles.forEach(s => s.draw(ctx));
+
+  // 准星
+  if (gameRunning) {
+    drawCrosshair(mouseX, mouseY);
+  }
+}
+
+function drawCrosshair(x, y) {
+  if (x < 0 || y < 0) return;
+  const s = cursorSize;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 5;
+
+  // 外圈
+  ctx.beginPath();
+  ctx.arc(x, y, s, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 十字线
+  const gap = 6;
+  const len = s + 8;
+  ctx.beginPath();
+  ctx.moveTo(x - len, y);
+  ctx.lineTo(x - gap, y);
+  ctx.moveTo(x + gap, y);
+  ctx.lineTo(x + len, y);
+  ctx.moveTo(x, y - len);
+  ctx.lineTo(x, y - gap);
+  ctx.moveTo(x, y + gap);
+  ctx.lineTo(x, y + len);
+  ctx.stroke();
+
+  // 中心点
+  ctx.fillStyle = '#FF6B6B';
+  ctx.shadowColor = 'rgba(255,107,107,0.6)';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function updateUI() {
+  scoreEl.textContent = score;
+  comboEl.textContent = combo;
+  livesEl.textContent = lives;
+
+  // 生命低时闪烁
+  if (lives <= 2) {
+    livesEl.style.color = lives % 2 === 0 ? '#FF0000' : '#FF6B6B';
+    livesEl.style.animation = 'none';
+    livesEl.offsetHeight;
+    livesEl.style.animation = 'pulse 0.5s infinite';
+  } else {
+    livesEl.style.color = '#FF6B6B';
+    livesEl.style.animation = '';
+  }
+}
+
+function gameLoop() {
+  update();
+  draw();
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// ========== 开始/结束 ==========
+function startGame() {
+  initAudio();
+  score = 0;
+  combo = 0;
+  maxCombo = 0;
+  lives = 5;
+  missedBalloons = 0;
+  frameCount = 0;
+  difficulty = 1;
+  balloons = [];
+  particles = [];
+  sparkles = [];
+  cursorSize = 25;
+
+  // 初始气球
+  for (let i = 0; i < 6; i++) {
+    const b = new Balloon();
+    b.y = H * 0.2 + Math.random() * H * 0.6;
+    balloons.push(b);
+  }
+
+  updateUI();
+  startScreen.style.display = 'none';
+  gameoverScreen.style.display = 'none';
+  gameRunning = true;
+
+  if (animId) cancelAnimationFrame(animId);
+  gameLoop();
+}
+
+function endGame() {
+  gameRunning = false;
+  if (animId) cancelAnimationFrame(animId);
+
+  // 结算星星
+  let starCount = 1;
+  if (score >= 30) starCount = 3;
+  else if (score >= 15) starCount = 2;
+
+  starsDisplay.textContent = '⭐'.repeat(starCount) + '☆'.repeat(3 - starCount);
+  finalScoreEl.textContent = score;
+
+  gameoverScreen.style.display = 'flex';
+
+  if (starCount >= 2) {
+    setTimeout(playCheer, 200);
+  }
+}
+
+// ========== 键盘快捷键 ==========
+window.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.code === 'Space') {
+    e.preventDefault();
+    if (!gameRunning) startGame();
+  }
+});
+
+// ========== 初始化显示 ==========
+startScreen.style.display = 'flex';
+gameoverScreen.style.display = 'none';
+updateUI();
+
+// 静态背景渲染
+function staticDraw() {
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#87CEEB');
+  skyGrad.addColorStop(0.5, '#B8E6FF');
+  skyGrad.addColorStop(1, '#90EE90');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  const sunX = W * 0.85, sunY = 80;
+  const sunGrad = ctx.createRadialGradient(sunX, sunY, 20, sunX, sunY, 100);
+  sunGrad.addColorStop(0, 'rgba(255,255,200,1)');
+  sunGrad.addColorStop(0.4, 'rgba(255,255,150,0.6)');
+  sunGrad.addColorStop(1, 'rgba(255,200,50,0)');
+  ctx.fillStyle = sunGrad;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 100, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#7EC850';
+  ctx.fillRect(0, H - 60, W, 60);
+  ctx.fillStyle = '#6DB840';
+  for (let i = 0; i < W; i += 15) {
+    const h = 8 + Math.sin(i * 0.3) * 5;
+    ctx.fillRect(i, H - 60, 3, -h);
+  }
+
+  // 装饰气球
+  const demoBalloons = [
+    { x: W * 0.3, y: H * 0.4, color: '#FF6B6B', emoji: '😊', size: 45 },
+    { x: W * 0.55, y: H * 0.55, color: '#54A0FF', emoji: '🌟', size: 50, special: true },
+    { x: W * 0.7, y: H * 0.35, color: '#FF9F43', emoji: '🐱', size: 40 },
+    { x: W * 0.2, y: H * 0.6, color: '#5F27CD', emoji: '🦋', size: 38 },
+    { x: W * 0.8, y: H * 0.5, color: '#FF6FB7', emoji: '🌸', size: 42 },
+  ];
+
+  demoBalloons.forEach(b => {
+    const gradient = ctx.createRadialGradient(
+      b.x - b.size * 0.25, b.y - b.size * 0.2, b.size * 0.1,
+      b.x, b.y, b.size
+    );
+    gradient.addColorStop(0, 'rgba(255,255,255,0.7)');
+    gradient.addColorStop(1, b.color);
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y, b.size * 0.72, b.size * 0.85, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(b.x - b.size * 0.22, b.y - b.size * 0.28, b.size * 0.18, b.size * 0.3, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = `${b.size * 0.6}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(b.emoji, b.x, b.y + b.size * 0.02);
+  });
+
+  drawClouds(ctx);
+}
+staticDraw();
+
+console.log('🎈 气球射击乐园准备好了！点击"开始玩"按钮或按空格键开始！');
+console.log('🖱️ 用鼠标点击气球来射击它们！');
+console.log('⭐ 金色星星气球值5分哦！');
+console.log('🔥 连续击中可获得连击加分！');
+</script>
+</body>
+</html>
